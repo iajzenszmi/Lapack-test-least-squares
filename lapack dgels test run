@@ -1,0 +1,65 @@
+an@ian-PORTEGE-Z930:~/Downloads/lapack$ gfortran  testlapackdgels.f -ffree-form -llapack
+ian@ian-PORTEGE-Z930:~/Downloads/lapack$ ./a.out
+ The least squares solution x is:
+   1.0000000000000004       -2.7833648212166645E-016
+ian@ian-PORTEGE-Z930:~/Downloads/lapack$ cat testlapackdgels.f 
+program demo_dgels
+  implicit none
+  integer, parameter :: dp = selected_real_kind(15, 307)
+  integer :: m, n, nrhs, lda, ldb, info, lwork
+  double precision, allocatable :: A(:,:), B(:,:), work(:)
+
+  ! Define problem dimensions: m equations, n unknowns, and nrhs right-hand sides.
+  m = 4
+  n = 2
+  nrhs = 1
+  lda = m
+  ! ldb should be at least max(m,n) according to LAPACK's requirement.
+  ldb = max(m, n)
+  
+  ! Allocate matrices A and B.
+  allocate(A(lda, n))
+  allocate(B(ldb, nrhs))
+
+  ! Fill the matrix A.
+  ! Example: A = [ 1  5
+  !                2  6
+  !                3  7
+  !                4  8 ]
+  A = reshape( (/ 1.0d0, 2.0d0, 3.0d0, 4.0d0,  &
+                 5.0d0, 6.0d0, 7.0d0, 8.0d0 /), (/ m, n /) )
+  
+  ! Fill the right-hand side B (vector b).
+  ! Example: b = [1, 2, 3, 4]^T.
+  B(1:4,1) = (/ 1.0d0, 2.0d0, 3.0d0, 4.0d0 /)
+  
+  !---------------------------------------------------------------
+  ! Query optimal workspace size:
+  lwork = -1
+  allocate(work(1))
+  call dgels('N', m, n, nrhs, A, lda, B, ldb, work, lwork, info)
+  if (info /= 0) then
+      print *, 'Error during workspace query, INFO = ', info
+      stop 1
+  end if
+  lwork = int(work(1))
+  deallocate(work)
+  allocate(work(lwork))
+  
+  !---------------------------------------------------------------
+  ! Solve the least squares problem:
+  call dgels('N', m, n, nrhs, A, lda, B, ldb, work, lwork, info)
+  if (info /= 0) then
+      print *, 'DGELS failed with INFO = ', info
+      stop 1
+  end if
+  
+  !---------------------------------------------------------------
+  ! For m >= n, the least squares solution x is stored in the first n rows of B.
+  print *, 'The least squares solution x is:'
+  print *, B(1:n,1)
+  
+  ! Clean up
+  deallocate(A, B, work)
+end program demo_dgels
+ian@ian-PORTEGE-Z930:~/Downloads/lapack$ 
